@@ -1,0 +1,149 @@
+const canvas = document.getElementById("jogo");
+const ctx = canvas.getContext("2d");
+
+// Tamanho de cada quadrado
+const tamBloco = 40;
+
+let mapa = [];
+
+// Matriz do mapa
+function gerarMapa() {
+  let novoMapa = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  ];
+
+  // Preencher com blocos destrutiveis aleatóriamente  
+  for (let l = 1; l < novoMapa.length - 1; l++) {
+    for (let c = 1; c < novoMapa[l].length - 1; c++) {
+      // Se o espaço estiver vazio e não for o canto inicial do jogador
+      if (novoMapa[l][c] === 0 && !(l <= 2 && c <= 2)) {
+        if (Math.random() < 0.4) {
+          novoMapa[l][c] = 2;
+        }
+      }
+    }
+  }
+  return novoMapa;
+}
+
+mapa = gerarMapa();
+// Configuração do jogador
+let player = {
+  x: 1,
+  y: 1,
+  cor: "cyan",
+};
+
+let bomba = null;
+let exploses = [];
+
+// Função para desenhar tudo
+function desenhar() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let l = 0; l < mapa.length; l++) {
+    for (let c = 0; c < mapa[l].length; c++) {
+      let bloco = mapa[l][c];
+      if (bloco === 1) ctx.fillStyle = "gray";
+      else if (bloco === 2) ctx.fillStyle = "brown";
+      else ctx.fillStyle = "green";
+      ctx.fillRect(c * tamBloco, l * tamBloco, tamBloco, tamBloco);
+    }
+  }
+
+  //   Desenha a bomba
+  if (bomba) {
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(
+      bomba.x * tamBloco + 20,
+      bomba.y * tamBloco + 20,
+      15,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+
+  //   Desenha Explosão
+  ctx.fillStyle = "orange";
+  exploses.forEach((exp) => {
+    ctx.fillRect(exp.c * tamBloco, exp.l * tamBloco, tamBloco, tamBloco);
+  });
+
+  //   Desenha jogador
+  ctx.fillStyle = player.cor;
+  ctx.fillRect(player.x * tamBloco + 5, player.y * tamBloco + 5, 30, 30);
+}
+
+// Movimentação
+window.addEventListener("keydown", (e) => {
+  let nx = player.x;
+  let ny = player.y;
+
+  if (e.key === "ArrowUp") ny--;
+  if (e.key === "ArrowDown") ny++;
+  if (e.key === "ArrowLeft") nx--;
+  if (e.key === "ArrowRight") nx++;
+
+  // Verifica se o caminho esta livre
+  if (mapa[ny][nx] === 0 && (!bomba || nx != bomba.x || ny !== bomba.y)) {
+    player.x = nx;
+    player.y = ny;
+  }
+
+  // Colocar bomba
+  if (e.key === " " && !bomba) {
+    bomba = { x: player.x, y: player.y };
+    setTimeout(explodir, 2000); //Expolde apos 2 segundoss
+  }
+  desenhar();
+});
+
+function explodir() {
+  let bx = bomba.x;
+  let by = bomba.y;
+  exploses = [{ l: by, c: bx }];
+
+  // Direções da cruz
+  let direcoes = [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ];
+  direcoes.forEach((d) => {
+    let nl = by + d[0];
+    let nc = bx + d[1];
+
+    if (mapa[nl][nc] !== 1) { //Para ao encontrar parede fixa
+      if (mapa[nl][nc] === 2) mapa[nl][nc] = 0; //Remove blocos destrutiveis
+      exploses.push({ l: nl, c: nc });
+    }
+  });
+  bomba = null;
+  desenhar();
+
+  // Verifica Game Over
+  exploses.forEach((exp) => {
+    if (exp.l === player.y && exp.c === player.x) {
+      alert("GAME OVER!");
+      location.reload();
+    }
+  });
+  setTimeout(() => {
+    exploses = [];
+    desenhar();
+  }, 500);
+}
+desenhar();
